@@ -1,0 +1,9 @@
+model File {
+  fileName     String @unique
+  originalName String
+  url          String
+
+  User   User[]
+  Post   Post?   @relation(fields: [postId], references: [id])
+  postId String?
+}
