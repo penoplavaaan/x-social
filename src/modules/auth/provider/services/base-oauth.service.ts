@@ -11,7 +11,7 @@ import { TypeUserInfo } from './types/user-info.types';
 export class BaseOAuthService {
   private BASE_URL: string;
 
-  public constructor(private readonly options: TypeBaseProviderOptions) {}
+  public constructor(protected readonly options: TypeBaseProviderOptions) {}
 
   protected async extractUserInfo(data: any): Promise<TypeUserInfo> {
     return {
@@ -58,7 +58,7 @@ export class BaseOAuthService {
 
     if (!tokensRequest.ok) {
       throw new BadRequestException(
-        `Не удалось получить пользователя с ${this.options.profile_url}. Проверьте правильность токена доступа.`,
+        `Не удалось получить пользователя с ${this.options.profile_url} (${this.options.name}). Проверьте правильность токена доступа.`,
       );
     }
 
