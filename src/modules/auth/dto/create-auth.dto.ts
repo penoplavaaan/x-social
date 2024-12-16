@@ -27,6 +27,9 @@ export class ConnectVkDto {
   state: string;
 }
 
+export class ConnectYandexDto {
+}
+
 export class CallbackVkDto {
   @ApiProperty({
     default: '',
@@ -46,4 +49,11 @@ export class CallbackVkDto {
     default: '',
   })
   device_id: string;
+}
+
+export class CallbackYandexDto {
+  @ApiProperty({
+    default: '',
+  })
+  code: string;
 }

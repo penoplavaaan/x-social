@@ -12,7 +12,7 @@ import {
   HttpStatus, Body,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CallbackVkDto, ConnectApiDto, ConnectVkDto } from './dto/create-auth.dto';
+import { CallbackVkDto, CallbackYandexDto, ConnectApiDto, ConnectVkDto, ConnectYandexDto } from './dto/create-auth.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthProviderGuard } from './guards/provider.guard';
 import { Request, Response } from 'express';
@@ -70,9 +70,19 @@ export class AuthController {
     };
   }
 
+  @Post('/oauth/callback/v2/yandex')
+  public async callbackYandex(@Body() params: CallbackYandexDto) {
+    return await this.authService.extractProfileFromCodeYandex(params);
+  }
+
   @Post('/oauth/connect/v2/vk')
   public async connectVK(@Body() params: ConnectVkDto) {
     return this.authService.connectVkV2(params);
+  }
+
+  @Post('/oauth/connect/v2/yandex')
+  public async connectYandex(@Body() params: ConnectYandexDto) {
+    return this.authService.connectYandexV2(params);
   }
 
   @UseGuards(AuthProviderGuard)

@@ -12,8 +12,14 @@ import { ProviderService } from './provider/provider.service';
 import { sha256 } from 'js-sha256';
 import { randomUUID } from 'crypto';
 import { VkProvider } from './provider/services/vk.provider';
-import { CallbackVkDto, ConnectVkDto } from './dto/create-auth.dto';
+import {
+  CallbackVkDto,
+  CallbackYandexDto,
+  ConnectVkDto,
+  ConnectYandexDto,
+} from './dto/create-auth.dto';
 import { JwtService } from '@nestjs/jwt';
+import { YandexProvider } from './provider/services/yandex.provider';
 
 @Injectable()
 export class AuthService {
@@ -163,6 +169,78 @@ export class AuthService {
     };
   }
 
+  public async extractProfileFromCodeYandex(params: CallbackYandexDto) {
+    const providerInstance = new YandexProvider({
+      client_id: this.configService.getOrThrow<string>('YANDEX_CLIENT_ID'),
+      client_secret: this.configService.getOrThrow<string>(
+        'YANDEX_CLIENT_SECRET',
+      ),
+      scopes: ['email', 'avatar', 'info'],
+    });
+    const profile = await providerInstance.findUserV2(params);
+
+    let account = await this.db.account.findFirst({
+      where: {
+        userId: profile.id,
+        provider: profile.provider,
+      },
+    });
+
+    const user = account?.userId
+      ? await this.userService.findById(account.userId)
+      : await this.userService.create({
+          name: profile.user.first_name + ' ' + profile.user.last_name,
+          nickName: randomUUID(),
+        });
+
+    if (account) {
+      account = await this.db.account.update({
+        where: {
+          id: account.id,
+        },
+        data: {
+          accessToken: profile.access_token,
+          refreshToken: profile.refresh_token,
+          expiresAt: this.secondsSinceEpoch() + profile.expires_at,
+        },
+        include: {
+          User: {
+            include: {
+              picture: true,
+            },
+          },
+        },
+      });
+
+      return {
+        access_token: this.jwtService.sign(account),
+      };
+      // return account;
+    }
+
+    account = await this.db.account.create({
+      data: {
+        userId: user.id,
+        type: 'oauth',
+        provider: profile.provider,
+        accessToken: profile.access_token,
+        refreshToken: profile.refresh_token,
+        expiresAt: this.secondsSinceEpoch() + profile.expires_at,
+      },
+      include: {
+        User: {
+          include: {
+            picture: true,
+          },
+        },
+      },
+    });
+
+    return {
+      access_token: this.jwtService.sign(account),
+    };
+  }
+
   private async saveSession(req: Request, user: User) {
     const userInfo = await this.db.user.findUnique({
       where: {
@@ -215,7 +293,7 @@ export class AuthService {
 
   async connectVkV2(params: ConnectVkDto) {
     const query = new URLSearchParams({
-      client_id: '52845134',
+      client_id: this.configService.getOrThrow<string>('VK_CLIENT_ID'),
       redirect_uri: 'https://x-social-wheat.vercel.app/',
       code_challenge: params.code_challenge,
       code_challenge_method: params.code_challenge_method,
@@ -225,6 +303,17 @@ export class AuthService {
 
     return {
       url: `https://id.vk.com/authorize?${query}`,
+    };
+  }
+
+  async connectYandexV2(params: ConnectYandexDto) {
+    const query = new URLSearchParams({
+      client_id: this.configService.getOrThrow<string>('YANDEX_CLIENT_ID'),
+      response_type: 'code',
+    });
+
+    return {
+      url: `https://oauth.yandex.ru/authorize?${query}`,
     };
   }
 
