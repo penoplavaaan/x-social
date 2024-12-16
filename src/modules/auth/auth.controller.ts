@@ -9,10 +9,10 @@ import {
   Query,
   BadRequestException,
   HttpCode,
-  HttpStatus,
+  HttpStatus, Body,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { ConnectApiDto } from './dto/create-auth.dto';
+import { CallbackVkDto, ConnectApiDto, ConnectVkDto } from './dto/create-auth.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthProviderGuard } from './guards/provider.guard';
 import { Request, Response } from 'express';
@@ -20,6 +20,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { ProviderService } from './provider/provider.service';
 import { Authorization } from './decorators/auth.decorator';
+import { VkProvider } from './provider/services/vk.provider';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -35,6 +37,7 @@ export class AuthController {
   public async callback(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @Query('authData') authData1: object,
     @Query('code') code: string,
     @Param('provider') provider: string,
   ) {
@@ -49,6 +52,11 @@ export class AuthController {
     );
   }
 
+  @Post('/oauth/callback/v2/vk')
+  public async callbackVK(@Body() params: CallbackVkDto) {
+    return await this.authService.extractProfileFromCodeVK(params);
+  }
+
   @Get('/oauth/connect/:provider')
   public async connect(@Param() params: ConnectApiDto) {
     if (params.provider === 'vk') return this.authService.connectVK();
@@ -60,6 +68,11 @@ export class AuthController {
     return {
       url: providerInstance.getAuthUrl(),
     };
+  }
+
+  @Post('/oauth/connect/v2/vk')
+  public async connectVK(@Body() params: ConnectVkDto) {
+    return this.authService.connectVkV2(params);
   }
 
   @UseGuards(AuthProviderGuard)
@@ -80,5 +93,11 @@ export class AuthController {
       id: req.session.userId,
       ...req.session.userData,
     };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('v2/me')
+  public async me(@Req() req: Request) {
+    return req.user;
   }
 }

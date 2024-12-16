@@ -3,8 +3,10 @@ export type TypeUserInfo = {
 	picture: string
 	name: string
 	email: string
-	access_token?: string | null
-	refresh_token?: string
-	expires_at?: number
+	access_token: string | null
+	refresh_token: string
+	expires_at: number
 	provider: string
+	user?: object
 }
+
